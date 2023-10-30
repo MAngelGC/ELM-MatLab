@@ -1,4 +1,4 @@
-clear all;
+clear;
 
 D = load('handwriting.mat');
 X = D.X;
@@ -40,6 +40,10 @@ XscaledVal = XscaledTrain(CVHOV.test(1),:);
 YTrainVal = YTrain(CVHOV.training(1),:);
 YVal = YTrain(CVHOV.test(1),:);
 
+[NTrainVal, K] = size(XscaledTrainVal);
+
+[NVal, K] = size(XscaledVal);
+
 % Performance Matrix
 Performance = zeros(7,6);
 
@@ -51,9 +55,38 @@ for C = [10^(-3) 10^(-2) 10^(-1) 1 10 100 1000]
     for L = [50 100 500 1000 1500 2000]
         j = j+1;
         
+        X = [XscaledTrainVal -ones(NTrainVal, 1)];
+        X_Val = [XscaledVal -ones(NVal, 1)];
+        t = 2 * rand(L, K+1) - 1;
+        
+        H = zeros(NTrainVal, L);
+        H_Val = zeros(NVal, L);
+        for n = 1:NTrainVal
+            for l = 1:L
+                t_arg = t(l)' * X(n);
+                H(n, l) = inv((1 + exp(-t_arg)));
+            end 
+        end
+        
+        h_prod = H' * H;
+        [dim1, dim2] = size(h_prod);
+        I = eye(dim1, dim2);
+        w = ((I/C) + h_prod)\H' * YTrainVal;
+
+        for n = 1:NVal
+            for l = 1:L
+                t_arg = t(l)' * X_Val(n);
+                H_Val(n, l) = inv((1 + exp(-t_arg)));
+            end 
+        end
+
+        Yestimated = H_Val * w;
+
+        Label = max(Yestimated, 1);
+
+        Performance(i, j) = sum(Label == YVal)/NVal;
         % Implementar el ELM neuronal, calcular el rendimiento asociado a C
         % y L
-        % Performance(i,j) = ...
         
     end
     j=0;
@@ -66,7 +99,7 @@ L = [50 100 500 1000 1500 2000];
 [rowsOfMaxes colsOfMaxes] = find(Performance == maxValue);
 
 Copt = C(rowsOfMaxes(1));
-Lopt = L(colsOfMaxes(1));
+Lopt = L(colsOfMaxes(1));   
 
 % Calcular con el conjunto de entrenamiento el ELM neuronal y
 % reportar el error cometido en test
